@@ -1,0 +1,22 @@
+services:
+  adeptos-audit:
+    build: .
+    image: adeptos/audit-agent:latest
+    container_name: adeptos-audit-agent
+    restart: unless-stopped
+    ports:
+      - "8012:3000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - PORT=3000
+      - NODE_ENV=production
+    volumes:
+      - ./reports:/app/reports
+    cap_add:
+      - SYS_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

@@ -1,157 +1,151 @@
 # 🤖 Adeptos AI — Agente Auditor Estratégico
 
-Agente conversacional de auditoría empresarial que usa IA para hacer 10 preguntas estratégicas, calcular un score de madurez digital, y generar un informe premium en PDF con diagnóstico, fugas de leads, impacto financiero y roadmap de 90 días.
+Agente conversacional de auditoría empresarial. Hace 10 preguntas estratégicas, calcula un score de madurez digital, y genera un informe premium en PDF con diagnóstico, fugas de leads, impacto financiero y roadmap de 90 días.
 
-**Stack:** Node.js · TypeScript · Fastify · OpenRouter (Claude Sonnet) · Puppeteer · Clean Architecture
+**Stack:** Node.js · TypeScript · Fastify · OpenRouter (Claude Sonnet + GPT-4o-mini) · Puppeteer · pnpm · Docker
 
 ---
 
-## 🚀 Instalación
+## 🐳 Deploy en servidor (Docker)
 
-### 1. Clonar el repositorio
 ```bash
+# 1. Clonar el repositorio
 git clone https://github.com/tu-usuario/agente-auditoria.git
 cd agente-auditoria
-```
 
-### 2. Instalar dependencias
-```bash
-npm install
-```
-
-### 3. Configurar variables de entorno
-```bash
+# 2. Configurar variables de entorno
 cp .env.example .env
+nano .env   # → pega tu OPENROUTER_API_KEY
+
+# 3. Levantar
+docker compose up -d --build
+
+# 4. Ver logs
+docker compose logs -f adeptos-audit
 ```
 
-Edita `.env` y pega tu clave de [OpenRouter](https://openrouter.ai/keys):
-```env
-OPENROUTER_API_KEY=sk-or-tu-clave-aqui
-```
+La API queda corriendo en `http://tu-servidor:8012`
 
 ---
 
-## 💬 Correr el Bot en la Terminal
+## 🔌 Endpoints API
 
-Este es el modo principal para probar el agente de forma conversacional:
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/health` | Health check del servicio |
+| `POST` | `/api/audit` | Procesar auditoría directa (JSON completo) |
+| `POST` | `/api/chat/session` | Crear sesión de chat y obtener saludo |
+| `POST` | `/api/chat/message` | Enviar mensaje → respuesta SSE streaming |
+| `GET` | `/api/reports/:filename` | Descargar PDF generado |
 
-```bash
-npm run bot
-```
-
-El agente te hará **10 preguntas estratégicas** sobre tu negocio, una por una. Al terminar, automáticamente:
-
-1. ✅ Calcula tu **Score de Madurez Digital** (0–100)
-2. ✅ Envía las respuestas a **Claude Sonnet** vía OpenRouter
-3. ✅ Genera un **informe HTML premium** con diagnóstico completo
-4. ✅ Convierte el HTML a un **PDF** en la carpeta `/reports`
-
-El PDF quedará en:
-```
-reports/report_<timestamp>.pdf
-```
-
----
-
-## 🌐 Correr el Servidor API (Fastify)
-
-Para exponer el agente como API REST:
+### POST `/api/chat/session`
+Inicia una sesión conversacional. Retorna el `sessionId` y el primer mensaje del agente.
 
 ```bash
-npm run dev
+curl -X POST http://localhost:8012/api/chat/session
+# → { "sessionId": "uuid", "message": "Hola 👋..." }
 ```
 
-El servidor corre en `http://localhost:3000`.
+### POST `/api/chat/message`
+Envía un mensaje. Responde en **SSE streaming** con tokens en tiempo real.
 
-### Endpoint: `POST /api/audit`
+```bash
+curl -X POST http://localhost:8012/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{ "sessionId": "uuid-aqui", "message": "Mi empresa vende software B2B" }'
+```
 
-**Body (JSON):**
+Eventos SSE que retorna:
+- `{ type: "token", content: "..." }` — token de texto en tiempo real
+- `{ type: "generating_report" }` — señal que se inició el PDF
+- `{ type: "report_ready", score: 45, pdfUrl: "/api/reports/report_xxx.pdf" }` — PDF listo
+- `{ type: "done" }` — fin del stream
+
+### POST `/api/audit` (modo directo, sin chat)
 ```json
 {
   "business_name": "Mi Empresa",
-  "business_description": "Vendemos software B2B",
-  "industry": "SaaS",
-  "team_size": "5 personas",
+  "business_description": "Software B2B para inmobiliarias",
+  "industry": "PropTech",
+  "team_size": "8 personas",
   "biggest_pain": "Seguimiento manual de leads",
-  "hours_wasted": "15 horas/semana",
+  "hours_wasted": "15h/semana",
   "losing_clients_where": "En el primer contacto",
-  "escaped_opportunities": "Leads que no vuelven a responder",
+  "escaped_opportunities": "Leads fríos que no regresan",
   "admin_vs_revenue_ratio": "70% admin, 30% ventas",
   "tools_used": "Gmail, WhatsApp, Excel",
-  "tools_integrated": "No, todo es manual",
-  "lead_to_client_process": "Lead entra → llamada → propuesta → cierre (2 semanas)",
-  "process_friction_points": "La propuesta tarda 3 días en enviarse",
+  "tools_integrated": "No, todo manual",
+  "lead_to_client_process": "Lead → llamada → propuesta → cierre (2 semanas)",
+  "process_friction_points": "La propuesta tarda 3 días",
   "previous_ai_attempts": "Ninguno",
-  "success_vision": "Tener el proceso automatizado y cerrar el doble de clientes",
-  "time_investment": "En ventas y estrategia de producto",
+  "success_vision": "Proceso automatizado, doble de cierres",
+  "time_investment": "Ventas y estrategia",
   "decision_makers": "Solo yo",
   "implementation_timeline": "Este mes"
 }
 ```
 
-**Respuesta:**
-```json
-{
-  "success": true,
-  "data": {
-    "score": 45,
-    "pdfPath": "C:\\...\\reports\\report_123456789.pdf"
-  }
-}
+---
+
+## 💻 Desarrollo local
+
+```bash
+# Instalar dependencias
+pnpm install
+
+# Desarrollo con hot-reload (API)
+pnpm dev
+
+# Chatbot en terminal
+pnpm bot
+
+# Build producción
+pnpm build
 ```
 
 ---
 
-## 🗂️ Estructura del Proyecto
+## 🗂️ Estructura del Proyecto (Clean Architecture)
 
 ```
 src/
 ├── domain/                        # Lógica de negocio pura
 │   ├── entities/Audit.ts          # Tipos e interfaces
-│   └── interfaces/Services.ts    # Contratos (interfaces)
+│   └── interfaces/Services.ts    # Contratos
 │
 ├── application/
 │   └── use-cases/
-│       └── ProcessAuditUseCase.ts # Orquestador principal
+│       └── ProcessAuditUseCase.ts # Orquestador
 │
 ├── infrastructure/
 │   ├── services/
 │   │   ├── BasicScoringService.ts  # Calcula el score
-│   │   ├── OpenRouterService.ts    # Genera el informe con Claude
-│   │   └── PuppeteerPdfService.ts  # Convierte HTML a PDF
+│   │   ├── OpenRouterService.ts    # Genera el informe (Claude)
+│   │   └── PuppeteerPdfService.ts  # HTML → PDF
 │   └── http/
-│       ├── server.ts               # Servidor Fastify + DI
-│       ├── controllers/            # Controladores HTTP
-│       └── routes/                 # Rutas de la API
+│       ├── server.ts               # Fastify + DI
+│       ├── controllers/
+│       └── routes/
+│           ├── auditRoutes.ts      # POST /api/audit
+│           ├── chatRoutes.ts       # /api/chat/*  (SSE)
+│           └── reportRoutes.ts     # GET /api/reports/:filename
 │
 ├── tools/
 │   └── salesIntelligence.ts        # Psicología de ventas + Frameworks
 │
-├── cli-bot.ts                      # 💬 Chatbot de terminal
-└── test-client.ts                  # Cliente de prueba de la API
+└── cli-bot.ts                      # Chatbot de terminal (testing)
 ```
 
 ---
 
-## 🧠 Scripts disponibles
-
-| Comando | Descripción |
-|---------|-------------|
-| `npm run bot` | Inicia el chatbot conversacional en la terminal |
-| `npm run dev` | Levanta el servidor Fastify en modo desarrollo |
-| `npm run test-client` | Envía una petición de prueba al servidor |
-| `npm run build` | Compila TypeScript a JavaScript |
-
----
-
-## 🔑 Modelos usados
+## 🔑 Modelos
 
 | Uso | Modelo | Razón |
 |-----|--------|-------|
-| Chat conversacional | `openai/gpt-4o-mini` | Rápido y económico para el diálogo |
-| Generación del informe | `anthropic/claude-sonnet-4-5` | Profundo y analítico para reportes largos |
+| Chat conversacional | `openai/gpt-4o-mini` | Rápido para diálogo |
+| Generación del informe | `anthropic/claude-sonnet-4-5` | Profundo para análisis |
 
-Ambos accedidos vía **[OpenRouter](https://openrouter.ai)** con una sola API key.
+Ambos via **[OpenRouter](https://openrouter.ai)** con una sola API key.
 
 ---
 

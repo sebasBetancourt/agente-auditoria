@@ -14,7 +14,9 @@ export class PuppeteerPdfService implements IPdfService {
 
   async generatePdf(htmlContent: string, filename: string): Promise<string> {
     const browser = await puppeteer.launch({
-      headless: "new"
+      headless: "new",
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     
     try {
