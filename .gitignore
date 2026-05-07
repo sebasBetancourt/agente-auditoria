@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment variables (NEVER subir al repo)
+.env
+
+# Build output
+dist/
+
+# PDF reports generados
+reports/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Repositorio de skills (clonar por separado)
+marketingskills/
